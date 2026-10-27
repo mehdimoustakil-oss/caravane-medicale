@@ -1,0 +1,11 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Caravane Medicale",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Caravane Medicale",
+  "start_url": "/",
+  "theme_color": "#ffffff"
+}
