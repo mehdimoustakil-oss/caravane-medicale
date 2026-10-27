@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caravane Médicale - Gestion</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS pour Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF pour PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 antialiased">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col no-print">
+            <div class="p-5 border-b border-slate-800">
+                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-house-medical text-teal-400"></i> Caravane Med
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">Gestion Sanitaire Mobile</p>
+            </div>
+            
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition bg-teal-600 text-white">
+                    <i class="fa-solid fa-chart-pie w-5"></i> Tableau de Bord
+                </button>
+                <button onclick="switchTab('patients')" id="nav-patients" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition text-slate-300 hover:bg-slate-800">
+                    <i class="fa-solid fa-users w-5"></i> Patients & Dossiers
+                </button>
+                <button onclick="switchTab('consultations')" id="nav-consultations" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition text-slate-300 hover:bg-slate-800">
+                    <i class="fa-solid fa-stethoscope w-5"></i> Consultations & Spécialités
+                </button>
+                <button onclick="switchTab('pharmacy')" id="nav-pharmacy" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition text-slate-300 hover:bg-slate-800">
+                    <i class="fa-solid fa-pills w-5"></i> Pharmacie & Distribution
+                </button>
+                <button onclick="switchTab('surgery')" id="nav-surgery" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition text-slate-300 hover:bg-slate-800">
+                    <i class="fa-solid fa-scalpel w-5"></i> Actes & Chirurgie
+                </button>
+                <button onclick="switchTab('reports')" id="nav-reports" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition text-slate-300 hover:bg-slate-800">
+                    <i class="fa-solid fa-file-lines w-5"></i> Rapports & Statistiques
+                </button>
+            </nav>
+            
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-400 text-center">
+                Conçu par <span class="text-teal-400 font-semibold">Mehdi Moustakil</span>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            
+            <!-- Top Bar -->
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 no-print">
+                <div class="flex items-center gap-4">
+                    <span id="current-section-title" class="text-lg font-semibold text-slate-700">Tableau de Bord</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-sm bg-teal-50 text-teal-700 px-3 py-1 rounded-full font-medium border border-teal-200">
+                        <i class="fa-solid fa-circle text-xs text-teal-500 mr-1 animate-pulse"></i> Session Active
+                    </span>
+                </div>
+            </header>
+
+            <!-- Dynamic Content Container -->
+            <div class="p-6 flex-1">
+
+                <!-- 1. DASHBOARD TAB -->
+                <div id="tab-dashboard" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Total Patients</p>
+                                <h3 id="stat-total-patients" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Consultations</p>
+                                <h3 id="stat-total-consultations" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-stethoscope"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Médicaments Délivrés</p>
+                                <h3 id="stat-total-meds" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-pills"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Interventions / Chirurgie</p>
+                                <h3 id="stat-total-surgery" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-scalpel"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-base font-semibold text-slate-800 mb-4">Répartition par Spécialité Médicale</h3>
+                        <div id="speciality-stats-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. PATIENTS TAB -->
+                <div id="tab-patients" class="space-y-6 hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-base font-semibold text-slate-800 mb-4">Enregistrer un Nouveau Patient</h3>
+                        <form id="patient-form" onsubmit="savePatient(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Nom et Prénom</label>
+                                <input type="text" id="p-name" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">CIN / Numéro d'Identification</label>
+                                <input type="text" id="p-cin" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Âge</label>
+                                <input type="number" id="p-age" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Sexe</label>
+                                <select id="p-gender" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                                    <option value="Masculin">Masculin</option>
+                                    <option value="Féminin">Féminin</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Téléphone</label>
+                                <input type="text" id="p-phone" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Adresse / Commune</label>
+                                <input type="text" id="p-address" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div class="md:col-span-3 flex justify-end">
+                                <button type="submit" class="bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition">Enregistrer le Patient</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                            <h3 class="font-semibold text-slate-800 text-sm">Liste des Patients Enregistrés</h3>
+                            <input type="text" id="patient-search" placeholder="Rechercher..." oninput="filterPatients()" class="px-3 py-1.5 text-xs border rounded-lg outline-none">
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-600">
+                                <thead class="bg-gray-100 text-xs uppercase text-gray-700">
+                                    <tr>
+                                        <th class="p-3">Nom & Prénom</th>
+                                        <th class="p-3">CIN</th>
+                                        <th class="p-3">Âge</th>
+                                        <th class="p-3">Sexe</th>
+                                        <th class="p-3">Téléphone</th>
+                                        <th class="p-3">Adresse</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="patients-table-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. CONSULTATIONS TAB -->
+                <div id="tab-consultations" class="space-y-6 hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-base font-semibold text-slate-800 mb-4">Saisir une Consultation Médicale</h3>
+                        <form id="consultation-form" onsubmit="saveConsultation(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Sélectionner le Patient</label>
+                                <select id="c-patient" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Spécialité Médicale</label>
+                                <select id="c-speciality" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                                    <option value="Médecine Générale">Médecine Générale</option>
+                                    <option value="Ophtalmologie">Ophtalmologie</option>
+                                    <option value="Cardiologie">Cardiologie</option>
+                                    <option value="Pédiatrie">Pédiatrie</option>
+     <option value="Gynécologie-Obstétrique">Gynécologie-Obstétrique</option>
+                                    <option value="Dentisterie / Médecine Bucco-Dentaire">Dentisterie / Médecine Bucco-Dentaire</option>
+                                    <option value="Dermatologie">Dermatologie</option>
+                                    <option value="Endocrinologie et Diététique">Endocrinologie et Diététique</option>
+                                    <option value="Gastro-entérologie">Gastro-entérologie</option>
+                                    <option value="Pneumologie">Pneumologie</option>
+                                    <option value="Rhumatologie">Rhumatologie</option>
+                                    <option value="Traumatologie et Orthopédie">Traumatologie et Orthopédie</option>
+                                    <option value="Oto-Rhino-Laryngologie (ORL)">Oto-Rhino-Laryngologie (ORL)</option>
+                                    <option value="Néphrologie">Néphrologie</option>
+                                    <option value="Neurologie">Neurologie</option>
+                                    <option value="Urologie">Urologie</option>
+                                    <option value="Chirurgie Générale">Chirurgie Générale</option>
+                                    <option value="Radiologie et Échographie">Radiologie et Échographie</option>
+                                    <option value="Biologie Médicale / Analyses">Biologie Médicale / Analyses</option>
+                                    <option value="Médecine Physique et Réadaptation">Médecine Physique et Réadaptation</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Diagnostic Préliminaire / Observation</label>
+                                <input type="text" id="c-diagnosis" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div class="md:col-span-3 flex justify-end">
+                                <button type="submit" class="bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition">Enregistrer la Consultation</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 border-b bg-gray-50">
+                            <h3 class="font-semibold text-slate-800 text-sm">Registre des Consultations</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-600">
+                                <thead class="bg-gray-100 text-xs uppercase text-gray-700">
+                                    <tr>
+                                        <th class="p-3">Patient</th>
+                                        <th class="p-3">Spécialité</th>
+                                        <th class="p-3">Diagnostic</th>
+                                        <th class="p-3">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="consultations-table-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. PHARMACY TAB -->
+                <div id="tab-pharmacy" class="space-y-6 hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-base font-semibold text-slate-800 mb-4">Distribution de Médicaments</h3>
+                        <form id="pharmacy-form" onsubmit="savePharmacy(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Patient</label>
+                                <select id="ph-patient" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Nom du Médicament</label>
+                                <input type="text" id="ph-med" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Quantité & Posologie</label>
+                                <input type="text" id="ph-qty" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div class="md:col-span-3 flex justify-end">
+                                <button type="submit" class="bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition">Enregistrer la Délivrance</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 border-b bg-gray-50">
+                            <h3 class="font-semibold text-slate-800 text-sm">Historique de la Pharmacie</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-600">
+                                <thead class="bg-gray-100 text-xs uppercase text-gray-700">
+                                    <tr>
+                                        <th class="p-3">Patient</th>
+                                        <th class="p-3">Médicament</th>
+                                        <th class="p-3">Quantité / Posologie</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pharmacy-table-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. SURGERY TAB -->
+                <div id="tab-surgery" class="space-y-6 hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-base font-semibold text-slate-800 mb-4">Enregistrement d'Intervention / Chirurgie</h3>
+                        <form id="surgery-form" onsubmit="saveSurgery(event)" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Patient</label>
+                                <select id="s-patient" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Type d'Intervention</label>
+                                <input type="text" id="s-type" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Chirurgien / Médecin Responsable</label>
+                                <input type="text" id="s-doctor" required class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            </div>
+                            <div class="md:col-span-3 flex justify-end">
+                                <button type="submit" class="bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition">Enregistrer l'Acte</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 border-b bg-gray-50">
+                            <h3 class="font-semibold text-slate-800 text-sm">Registre des Interventions Chirurgicales</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-600">
+                                <thead class="bg-gray-100 text-xs uppercase text-gray-700">
+                                    <tr>
+                                        <th class="p-3">Patient</th>
+                                        <th class="p-3">Intervention</th>
+                                        <th class="p-3">Chirurgien</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="surgery-table-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. REPORTS TAB -->
+                <div id="tab-reports" class="space-y-6 hidden">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-800">Rapports et Statistiques Globales</h3>
+                            <p class="text-xs text-gray-500 mt-1">Exportez les données complètes de la caravane médicale sous différents formats.</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition flex items-center gap-2">
+                                <i class="fa-solid fa-file-excel"></i> Exporter Excel
+                            </button>
+                            <button onclick="exportToPDF()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700 transition flex items-center gap-2">
+                                <i class="fa-solid fa-file-pdf"></i> Exporter PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h4 class="text-sm font-semibold text-slate-800 mb-4">Résumé Global des Prestations</h4>
+                        <div id="report-summary-content" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Script Application Logic -->
+    <script>
+        // Data Storage
+        let appData = {
+            patients: JSON.parse(localStorage.getItem('caravan_patients')) || [],
+            consultations: JSON.parse(localStorage.getItem('caravan_consultations')) || [],
+            pharmacy: JSON.parse(localStorage.getItem('caravan_pharmacy')) || [],
+            surgery: JSON.parse(localStorage.getItem('caravan_surgery')) || []
+        };
+
+        const specialitiesList = [
+            "Médecine Générale", "Ophtalmologie", "Cardiologie", "Pédiatrie",
+            "Gynécologie-Obstétrique", "Dentisterie / Médecine Bucco-Dentaire",
+            "Dermatologie", "Endocrinologie et Diététique", "Gastro-entérologie",
+            "Pneumologie", "Rhumatologie", "Traumatologie et Orthopédie",
+            "Oto-Rhino-Laryngologie (ORL)", "Néphrologie", "Neurologie",
+            "Urologie", "Chirurgie Générale", "Radiologie et Échographie",
+            "Biologie Médicale / Analyses", "Médecine Physique et Réadaptation"
+        ];
+
+        function saveData() {
+            localStorage.setItem('caravan_patients', JSON.stringify(appData.patients));
+            localStorage.setItem('caravan_consultations', JSON.stringify(appData.consultations));
+            localStorage.setItem('caravan_pharmacy', JSON.stringify(appData.pharmacy));
+            localStorage.setItem('caravan_surgery', JSON.stringify(appData.surgery));
+            updateDashboard();
+            updateSelects();
+        }
+
+        function switchTab(tabId) {
+            ['dashboard', 'patients', 'consultations', 'pharmacy', 'surgery', 'reports'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`).classList.remove('bg-teal-600', 'text-white');
+                document.getElementById(`nav-${t}`).classList.add('text-slate-300', 'hover:bg-slate-800');
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).classList.remove('text-slate-300', 'hover:bg-slate-800');
+            document.getElementById(`nav-${tabId}`).classList.add('bg-teal-600', 'text-white');
+
+            const titles = {
+                dashboard: "Tableau de Bord",
+                patients: "Gestion des Patients",
+                consultations: "Consultations Médicales",
+                pharmacy: "Pharmacie & Distribution",
+                surgery: "Chirurgie & Actes",
+                reports: "Rapports & Statistiques"
+            };
+            document.getElementById('current-section-title').innerText = titles[tabId];
+        }
+
+        function savePatient(e) {
+            e.preventDefault();
+            const patient = {
+                id: Date.now(),
+                name: document.getElementById('p-name').value,
+                cin: document.getElementById('p-cin').value,
+                age: document.getElementById('p-age').value,
+                gender: document.getElementById('p-gender').value,
+                phone: document.getElementById('p-phone').value,
+                address: document.getElementById('p-address').value
+            };
+            appData.patients.push(patient);
+            saveData();
+            document.getElementById('patient-form').reset();
+            renderPatients();
+            alert("Patient enregistré avec succès !");
+        }
+
+        function renderPatients() {
+            const tbody = document.getElementById('patients-table-body');
+            tbody.innerHTML = appData.patients.map(p => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-medium text-slate-800">${p.name}</td>
+                    <td class="p-3">${p.cin}</td>
+                    <td class="p-3">${p.age} ans</td>
+                    <td class="p-3">${p.gender}</td>
+                    <td class="p-3">${p.phone || '-'}</td>
+                    <td class="p-3">${p.address || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterPatients() {
+            const query = document.getElementById('patient-search').value.toLowerCase();
+            const filtered = appData.patients.filter(p => p.name.toLowerCase().includes(query) || p.cin.toLowerCase().includes(query));
+            const tbody = document.getElementById('patients-table-body');
+            tbody.innerHTML = filtered.map(p => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-medium text-slate-800">${p.name}</td>
+                    <td class="p-3">${p.cin}</td>
+                    <td class="p-3">${p.age} ans</td>
+                    <td class="p-3">${p.gender}</td>
+                    <td class="p-3">${p.phone || '-'}</td>
+                    <td class="p-3">${p.address || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function saveConsultation(e) {
+            e.preventDefault();
+            const consultation = {
+                patientId: document.getElementById('c-patient').value,
+                speciality: document.getElementById('c-speciality').value,
+                diagnosis: document.getElementById('c-diagnosis').value,
+                date: new Date().toLocaleDateString()
+            };
+            appData.consultations.push(consultation);
+            saveData();
+            document.getElementById('consultation-form').reset();
+            renderConsultations();
+            alert("Consultation enregistrée !");
+        }
+
+        function renderConsultations() {
+            const tbody = document.getElementById('consultations-table-body');
+            tbody.innerHTML = appData.consultations.map(c => {
+                const pat = appData.patients.find(p => p.id == c.patientId);
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-medium text-slate-800">${pat ? pat.name : 'Inconnu'}</td>
+                        <td class="p-3">${c.speciality}</td>
+                        <td class="p-3">${c.diagnosis}</td>
+                        <td class="p-3">${c.date}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function savePharmacy(e) {
+            e.preventDefault();
+            const item = {
+                patientId: document.getElementById('ph-patient').value,
+                med: document.getElementById('ph-med').value,
+                qty: document.getElementById('ph-qty').value
+            };
+            appData.pharmacy.push(item);
+            saveData();
+            document.getElementById('pharmacy-form').reset();
+            renderPharmacy();
+            alert("Médicament délivré enregistré !");
+        }
+
+        function renderPharmacy() {
+            const tbody = document.getElementById('pharmacy-table-body');
+            tbody.innerHTML = appData.pharmacy.map(ph => {
+                const pat = appData.patients.find(p => p.id == ph.patientId);
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-medium text-slate-800">${pat ? pat.name : 'Inconnu'}</td>
+                        <td class="p-3">${ph.med}</td>
+                        <td class="p-3">${ph.qty}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function saveSurgery(e) {
+            e.preventDefault();
+            const item = {
+                patientId: document.getElementById('s-patient').value,
+                type: document.getElementById('s-type').value,
+                doctor: document.getElementById('s-doctor').value
+            };
+            appData.surgery.push(item);
+            saveData();
+            document.getElementById('surgery-form').reset();
+            renderSurgery();
+            alert("Intervention enregistrée !");
+        }
+
+        function renderSurgery() {
+            const tbody = document.getElementById('surgery-table-body');
+            tbody.innerHTML = appData.surgery.map(s => {
+                const pat = appData.patients.find(p => p.id == s.patientId);
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-medium text-slate-800">${pat ? pat.name : 'Inconnu'}</td>
+                        <td class="p-3">${s.type}</td>
+                        <td class="p-3">${s.doctor}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateSelects() {
+            const options = appData.patients.map(p => `<option value="${p.id}">${p.name} (CIN: ${p.cin})</option>`).join('');
+            ['c-patient', 'ph-patient', 's-patient'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerHTML = options;
+            });
+        }
+
+        function updateDashboard() {
+            document.getElementById('stat-total-patients').innerText = appData.patients.length;
+            document.getElementById('stat-total-consultations').innerText = appData.consultations.length;
+            document.getElementById('stat-total-meds').innerText = appData.pharmacy.length;
+            document.getElementById('stat-total-surgery').innerText = appData.surgery.length;
+
+            const specContainer = document.getElementById('speciality-stats-container');
+            specContainer.innerHTML = specialitiesList.map(spec => {
+                const count = appData.consultations.filter(c => c.speciality === spec).length;
+                return `
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <p class="text-xs text-gray-500 font-medium truncate">${spec}</p>
+                        <h4 class="text-lg font-bold text-slate-800 mt-1">${count}</h4>
+                    </div>
+                `;
+            }).join('');
+
+            const reportSummary = document.getElementById('report-summary-content');
+            reportSummary.innerHTML = `
+                <div class="p-4 bg-gray-50 rounded-lg"><strong>Total Patients Enregistrés:</strong> ${appData.patients.length}</div>
+                <div class="p-4 bg-gray-50 rounded-lg"><strong>Total Consultations Réalisées:</strong> ${appData.consultations.length}</div>
+                <div class="p-4 bg-gray-50 rounded-lg"><strong>Total Ordonnances / Médicaments:</strong> ${appData.pharmacy.length}</div>
+                <div class="p-4 bg-gray-50 rounded-lg"><strong>Total Actes Chirurgicaux:</strong> ${appData.surgery.length}</div>
+            `;
+        }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appData.patients), "Patients");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appData.consultations), "Consultations");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appData.pharmacy), "Pharmacie");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appData.surgery), "Chirurgie");
+            XLSX.writeFile(wb, "Rapport_Caravane_Medicale.xlsx");
+        }
+
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Rapport Global - Caravane Medicale", 14, 20);
+            doc.autoTable({
+                startY: 30,
+                head: [['Indicateur', 'Valeur Totale']],
+                body: [
+                    ['Total Patients', appData.patients.length],
+                    ['Total Consultations', appData.consultations.length],
+                    ['Total Médicaments Délivrés', appData.pharmacy.length],
+                    ['Total Actes Chirurgicaux', appData.surgery.length]
+                ]
+            });
+            doc.save("Rapport_Caravane_Medicale.pdf");
+        }
+
+        // Initialize App
+        renderPatients();
+        renderConsultations();
+        renderPharmacy();
+        renderSurgery();
+        updateDashboard();
+        updateSelects();
+    </script>
+</body>
+</html>
